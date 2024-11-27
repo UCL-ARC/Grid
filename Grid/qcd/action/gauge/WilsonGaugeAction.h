@@ -69,15 +69,22 @@ public:
 
     RealD factor = 0.5 * beta / RealD(Nc);
 
-    GaugeLinkField Umu(U.Grid());
+    // GaugeLinkField Umu(U.Grid());
+    std::vector<GaugeLinkField> Uvec(Nd, U.Grid());
+    for (int d = 0; d < Nd; d++) {
+      Uvec[d] = PeekIndex<LorentzIndex>(U, d);
+    }
+
     GaugeLinkField dSdU_mu(U.Grid());
     for (int mu = 0; mu < Nd; mu++) {
 
-      Umu = PeekIndex<LorentzIndex>(U, mu);
-      
+      // Umu = PeekIndex<LorentzIndex>(U, mu);
+
       // Staple in direction mu
-      WilsonLoops<Gimpl>::Staple(dSdU_mu, U, mu);
-      dSdU_mu = Ta(Umu * dSdU_mu) * factor;
+      // WilsonLoops<Gimpl>::Staple(dSdU_mu, U, mu);
+      // dSdU_mu = Ta(Umu * dSdU_mu) * factor;
+      WilsonLoops<Gimpl>::Staple(dSdU_mu, Uvec, mu);
+      dSdU_mu = Ta(Uvec[mu] * dSdU_mu) * factor;
       
       PokeIndex<LorentzIndex>(dSdU, dSdU_mu, mu);
     }

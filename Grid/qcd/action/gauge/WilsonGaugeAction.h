@@ -68,27 +68,23 @@ public:
     // extend Ta to include Lorentz indexes
 
     RealD factor = 0.5 * beta / RealD(Nc);
+    GridBase *grid = U.Grid();
 
-    // GaugeLinkField Umu(U.Grid());
-    std::vector<GaugeLinkField> Uvec(Nd, U.Grid());
-    for (int d = 0; d < Nd; d++) {
-      Uvec[d] = PeekIndex<LorentzIndex>(U, d);
+    GaugeLinkField dSdU_mu(grid);
+    std::vector<GaugeLinkField> Umu(Nd, grid);
+    for (int mu = 0; mu < Nd; mu++) {
+      Umu[mu] = PeekIndex<LorentzIndex>(U, mu);
     }
 
-    GaugeLinkField dSdU_mu(U.Grid());
     for (int mu = 0; mu < Nd; mu++) {
-
-      // Umu = PeekIndex<LorentzIndex>(U, mu);
-
       // Staple in direction mu
-      // WilsonLoops<Gimpl>::Staple(dSdU_mu, U, mu);
-      // dSdU_mu = Ta(Umu * dSdU_mu) * factor;
-      WilsonLoops<Gimpl>::Staple(dSdU_mu, Uvec, mu);
-      dSdU_mu = Ta(Uvec[mu] * dSdU_mu) * factor;
-      
+      WilsonLoops<Gimpl>::Staple(dSdU_mu, Umu, mu);
+      dSdU_mu = Ta(Umu[mu] * dSdU_mu) * factor;
+
       PokeIndex<LorentzIndex>(dSdU, dSdU_mu, mu);
     }
   }
+
 private:
   RealD beta;  
  };

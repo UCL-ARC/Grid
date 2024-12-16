@@ -30,6 +30,10 @@ directory
 #ifndef QCD_PSEUDOFERMION_TWO_FLAVOUR_H
 #define QCD_PSEUDOFERMION_TWO_FLAVOUR_H
 
+#ifdef GRID_CUDA
+#include <nvtx3/nvToolsExt.h>
+#endif
+
 NAMESPACE_BEGIN(Grid);
 
 ////////////////////////////////////////////////////////////////////////
@@ -129,6 +133,10 @@ public:
   // 
   //////////////////////////////////////////////////////
   virtual void deriv(const GaugeField &U, GaugeField &dSdU) {
+
+#ifdef GRID_CUDA
+    nvtxRangePush("TwoFlavour_deriv");
+#endif
     FermOp.ImportGauge(U);
 
     FermionField X(FermOp.FermionGrid());
@@ -150,6 +158,9 @@ public:
     dSdU = dSdU + tmp;
 
     // not taking here the traceless antihermitian component
+#ifdef GRID_CUDA
+    nvtxRangePop();
+#endif
   };
 };
 

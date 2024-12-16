@@ -29,6 +29,9 @@ directory
 #ifndef GRID_GAUGE_IMPL_TYPES_H
 #define GRID_GAUGE_IMPL_TYPES_H
 
+#ifdef GRID_CUDA
+#include <nvtx3/nvToolsExt.h>
+#endif
 
 NAMESPACE_BEGIN(Grid);
 
@@ -133,20 +136,56 @@ public:
     }
 
   static inline void update_field(Field& P, Field& U, double ep){
-    //static std::chrono::duration<double> diff;
+#ifdef GRID_CUDA
+    nvtxRangePush("GaugeImplTypes_update_field");
+#endif
+    // static std::chrono::duration<double> diff;
 
     //auto start = std::chrono::high_resolution_clock::now();
     autoView(U_v,U,AcceleratorWrite);
     autoView(P_v,P,AcceleratorRead);
-    accelerator_for(ss, P.Grid()->oSites(),1,{
-      for (int mu = 0; mu < Nd; mu++) {
-          U_v[ss](mu) = Exponentiate(P_v[ss](mu), ep, Nexp) * U_v[ss](mu);
-          U_v[ss](mu) = Group::ProjectOnGeneralGroup(U_v[ss](mu));
-      }
-    });
-   //auto end = std::chrono::high_resolution_clock::now();
-   // diff += end - start;
-   // std::cout << "Time to exponentiate matrix " << diff.count() << " s\n";
+
+    // accelerator_for(ss, P.Grid()->oSites(), 1, {
+    //   for (int mu = 0; mu < Nd; mu++) {
+    //       U_v[ss](mu) = Exponentiate(P_v[ss](mu), ep, Nexp) * U_v[ss](mu);
+    //       U_v[ss](mu) = Group::ProjectOnGeneralGroup(U_v[ss](mu));
+    //   }
+    // });
+
+    // for (int mu = 0; mu < Nd; mu++) {
+    //   accelerator_for(ss, P.Grid()->oSites(), 1, {
+    //     U_v[ss](mu) = Exponentiate(P_v[ss](mu), ep, Nexp) * U_v[ss](mu);
+    //     U_v[ss](mu) = Group::ProjectOnGeneralGroup(U_v[ss](mu));
+    //   });
+    // }
+
+    for (int mu = 0; mu < Nd; mu++) {
+#ifdef GRID_CUDA
+      nvtxRangePush("Exponentiate");
+#endif
+      accelerator_for(ss, P.Grid()->oSites(), 1, {
+        U_v[ss](mu) = Exponentiate(P_v[ss](mu), ep, Nexp) * U_v[ss](mu);
+      });
+#ifdef GRID_CUDA
+      nvtxRangePop();
+#endif
+#ifdef GRID_CUDA
+      nvtxRangePush("ProjectOnSpGroup");
+#endif
+      accelerator_for(ss, P.Grid()->oSites(), 1, {
+        U_v[ss](mu) = Group::ProjectOnGeneralGroup(U_v[ss](mu));
+      });
+#ifdef GRID_CUDA
+      nvtxRangePop();
+#endif
+    }
+
+    // auto end = std::chrono::high_resolution_clock::now();
+    //  diff += end - start;
+    //  std::cout << "Time to exponentiate matrix " << diff.count() << " s\n";
+#ifdef GRID_CUDA
+    nvtxRangePop();
+#endif
   }
     
   static inline RealD FieldSquareNorm(Field& U){

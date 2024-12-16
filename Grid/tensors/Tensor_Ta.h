@@ -29,6 +29,9 @@ Author: neo <cossu@post.kek.jp>
 #ifndef GRID_MATH_TA_H
 #define GRID_MATH_TA_H
 
+// #ifdef GRID_CUDA
+// #include <nvtx3/nvToolsExt.h>
+// #endif
 
 NAMESPACE_BEGIN(Grid);
 
@@ -207,30 +210,29 @@ template<class vtype,int N> accelerator_inline iVector<vtype,N> ProjectOnSpGroup
 
 
 // int N is 2n in Sp(2n)
-template<class vtype,int N, typename std::enable_if< GridTypeMapper<vtype>::TensorLevel == 0 >::type * =nullptr>
+template<class vtype, int N, typename std::enable_if< GridTypeMapper<vtype>::TensorLevel == 0 >::type * =nullptr>
 accelerator_inline iMatrix<vtype,N> ProjectOnSpGroup(const iMatrix<vtype,N> &arg)
 {
-  // need a check for the group type?
   iMatrix<vtype,N> ret(arg);
   vtype nrm;
   vtype inner;
-  
+
   for(int c1=0;c1<N/2;c1++)
   {
-      
+
     for (int b=0; b<c1; b++)                  // remove the b-rows from U_c1
     {
       decltype(ret._internal[b][b]*ret._internal[b][b]) pr;
       decltype(ret._internal[b][b]*ret._internal[b][b]) prn;
       zeroit(pr);
       zeroit(prn);
-          
+
       for(int c=0; c<N; c++)
       {
         pr += conjugate(ret._internal[c1][c])*ret._internal[b][c];        // <U_c1 | U_b >
         prn += conjugate(ret._internal[c1][c])*ret._internal[b+N/2][c];   // <U_c1 | U_{b+N} >
       }
-       
+
 
       for(int c=0; c<N; c++)
       {

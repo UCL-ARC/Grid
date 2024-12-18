@@ -71,7 +71,7 @@ if __name__ == '__main__':
 
     expected_plaquette, expected_checksum_rng, expected_checksum_lat = read_expected(args.test_name, args.grid, args.mpi)
 
-    result = subprocess.run([f"./{args.test_name} --grid {args.grid} --mpi {args.mpi} --Thermalizations 0 --Trajectories 1 > output.txt"], shell=True, encoding="text")
+    result = subprocess.run([f"./{args.test_name} --grid {args.grid} --mpi {args.mpi} --Thermalizations 0 --Trajectories 1 --threads 1 > output.txt"], shell=True, encoding="text")
     plaquette, checksum_rng, checksum_lat = read_output()
 
     print(f"Running {args.test_name}")
@@ -80,10 +80,10 @@ if __name__ == '__main__':
     result = result and compare(checksum_lat, expected_checksum_lat, "Checksum LAT file ", args.stop)
     if result:
         print("All tests passed!")
+        os.remove("output.txt")
     else:
         print("Some tests failed...")
 
-    os.remove("output.txt")
     os.remove("ckpoint_rng.1")
     os.remove("ckpoint_lat.1")
 

@@ -1,6 +1,7 @@
 import pytest
+import pytest_check as check
 
-def read_expected(test_name="Test_hmc_Sp_WilsonFundFermionGauge", grid="8.8.8.8", mpi="1.1.1.1"):
+def read_expected(test_name, grid="8.8.8.8", mpi="1.1.1.1"):
     """
     Read expected values from file.
 
@@ -44,46 +45,23 @@ def read_output():
     return plaquette, checksum_rng, checksum_lat
 
 
-@pytest.fixture
-def cl_arguments():
-    import argparse
-
-    parser = argparse.ArgumentParser(description='Run end-to-end tests and compare results with expectations.')
-    parser.add_argument("test_name", help="File name of the test")
-    parser.add_argument("grid", help="Grid configuration")
-    parser.add_argument("mpi", help="MPI configuration")
-    parser.add_argument("-s", "--stop", action='store_true', help="Flag to stop testing when a test fails.")
-    args = parser.parse_args()
-
-    return args
-
-
-#def test_outputs(cl_arguments):
-def test_outputs(test_name, grid, mpi):
+def test_outputs(test_name, grid, mpi, cleanup_files):
     import subprocess
     import os
 
-    #test_name = cl_arguments.test_name
-    #expected_plaquette, expected_checksum_rng, expected_checksum_lat = read_expected(test_name, cl_arguments.grid, cl_arguments.mpi)
     expected_plaquette, expected_checksum_rng, expected_checksum_lat = read_expected(test_name, grid, mpi)
 
-    #result = subprocess.run([f"./{test_name} --grid {cl_arguments.grid} --mpi {cl_arguments.mpi} --Thermalizations 0 --Trajectories 1 --threads 1 > output.txt"], shell=True, encoding="text")
     #result = subprocess.run([f"./{test_name} --grid {grid} --mpi {mpi} --Thermalizations 0 --Trajectories 1 --threads 1 > output.txt"], shell=True, encoding="text")
     result = subprocess.run([f"./{test_name} --grid {grid} --mpi {mpi} --Thermalizations 0 --Trajectories 1 > output.txt"], shell=True, encoding="text")
     plaquette, checksum_rng, checksum_lat = read_output()
 
     print(f"Running {test_name}")
-    assert plaquette == expected_plaquette
-    assert checksum_rng == expected_checksum_rng
-    assert checksum_lat == expected_checksum_lat
-    #result = compare(plaquette, expected_plaquette, "plaquette", args.stop)
-    #result = result and compare(checksum_rng, expected_checksum_rng, "Checksum RNG file ", args.stop)
-    #result = result and compare(checksum_lat, expected_checksum_lat, "Checksum LAT file ", args.stop)
-    # if result:
-    #     print("All tests passed!")
-    #     os.remove("output.txt")
-    # else:
-    #     print("Some tests failed...")
+    # This manual check of each condition doesn't have to happen for pytest-check
+    # version 1.2.0 and later. We can use any_failures() instead.
+    failed = False
+    if not check.equal(plaquette, expected_plaquette, msg="Plaquette value comparison failed") : failed = True
+    if not check.equal(checksum_lat, expected_checksum_lat, msg="LAT file checksum comparison failed") : failed = True
+    if not check.equal(checksum_rng, expected_checksum_rng, msg="RND file checksum comparison failed") : failed = True
 
-    # os.remove("ckpoint_rng.1")
-    # os.remove("ckpoint_lat.1")
+    cleanup_files(failed)
+

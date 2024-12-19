@@ -23,14 +23,14 @@ def grid(request):
 def mpi(request):
     return request.config.getoption("--mpi")
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture
 def cleanup_files():
     import os
 
-    print("Before!")
-    yield
-    print(f"After!")
-    os.remove("output.txt")
+    def _cleanup(failed=True):  
+        if not failed: 
+            if os.path.exists("output.txt"): os.remove("output.txt")
+        if os.path.exists("ckpoint_rng.1"): os.remove("ckpoint_rng.1")
+        if os.path.exists("ckpoint_lat.1"): os.remove("ckpoint_lat.1")
 
-    os.remove("ckpoint_rng.1")
-    os.remove("ckpoint_lat.1")
+    return _cleanup

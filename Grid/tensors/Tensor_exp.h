@@ -131,36 +131,12 @@ accelerator_inline iMatrix<vtype,N> Exponentiate(const iMatrix<vtype,N> &arg, Re
   // the i sign is coming from outside
   // input matrix is anti-hermitian NOT hermitian
 
-  // std::cout << "N = " << N << std::endl;
-  // std::cout << "arg test = " << arg._internal[0][0] << std::endl;
-
   typedef iMatrix<vtype, N> mat;
   mat unit(1.0);
   mat ret(unit);
-
-  // Try to decompose generally and / or for the specific N=4 case.
-  for(int i=Nexp; i>=1;--i){
-    ret *= alpha/RealD(i);
-    ret = unit + ret*arg;
-  }
-  return ret;
-}
-
-// General exponential
-template<class vtype, int N, typename std::enable_if< GridTypeMapper<vtype>::TensorLevel == 0 >::type * =nullptr>
-accelerator_inline iMatrix<vtype,N> ExponentiateTest(const iMatrix<vtype,N> &arg, RealD alpha, Integer Nexp = DEFAULT_MAT_EXP)
-{
-  // notice that it actually computes
-  // exp ( input matrix )
-  // the i sign is coming from outside
-  // input matrix is anti-hermitian NOT hermitian
-
-  typedef iMatrix<vtype, N> mat;
-  mat unit(1.0);
-  mat ret(unit);
-  for(int i=Nexp; i>=1;--i){
-    ret *= alpha/RealD(i);
-    ret = unit + ret*arg;
+  for (int i = Nexp; i >= 1; --i) {
+    ret *= alpha / RealD(i);
+    ret = unit + ret * arg;
   }
   return ret;
 }

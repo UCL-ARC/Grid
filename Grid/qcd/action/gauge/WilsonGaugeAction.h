@@ -33,10 +33,6 @@ directory
 #ifndef QCD_WILSON_GAUGE_ACTION_H
 #define QCD_WILSON_GAUGE_ACTION_H
 
-#ifdef GRID_CUDA
-#include <nvtx3/nvToolsExt.h>
-#endif
-
 NAMESPACE_BEGIN(Grid);
 
 ////////////////////////////////////////////////////////////////////////
@@ -68,9 +64,7 @@ public:
   };
 
   virtual void deriv(const GaugeField &U, GaugeField &dSdU) {
-#ifdef GRID_CUDA
-    nvtxRangePush("WilsonGaugeAction_deriv");
-#endif
+    tracePush("WilsonGaugeAction_deriv");
     // not optimal implementation FIXME
     // extend Ta to include Lorentz indexes
 
@@ -90,9 +84,7 @@ public:
 
       PokeIndex<LorentzIndex>(dSdU, dSdU_mu, mu);
     }
-#ifdef GRID_CUDA
-    nvtxRangePop();
-#endif
+    tracePop("WilsonGaugeAction_deriv");
   }
 
 private:

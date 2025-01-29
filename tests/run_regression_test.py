@@ -67,11 +67,11 @@ def read_output():
     return plaquette, checksum_rng, checksum_lat
 
 
-def test_outputs(test_name, grid, mpi, cleanup_files):
+def test_outputs(test_name, grid, mpi, expected_line, cleanup_files):
     import subprocess
     import os
 
-    expected_plaquette, expected_checksum_rng, expected_checksum_lat = read_expected_values(test_name, grid, mpi)
+    expected_plaquette, expected_checksum_rng, expected_checksum_lat = read_expected_values_line(test_name, expected_line)
     if (expected_plaquette is None) or (expected_checksum_rng is None) or (expected_checksum_lat is None):
         pytest.fail(f"No appropriate reference values found, check {test_name}_expected.txt")
 

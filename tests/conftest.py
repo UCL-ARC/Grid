@@ -10,6 +10,9 @@ def pytest_addoption(parser):
     parser.addoption(
         "--mpi", action="store", help="MPI configuration"
     )
+    parser.addoption(
+        "--expected_line", action="store", help="Line number to read off the expected values file"
+    )
 
 @pytest.fixture
 def test_name(request):
@@ -22,6 +25,10 @@ def grid(request):
 @pytest.fixture
 def mpi(request):
     return request.config.getoption("--mpi")
+
+@pytest.fixture
+def expected_line(request):
+    return request.config.getoption("--expected_line")
 
 @pytest.fixture
 def cleanup_files():

@@ -1,21 +1,47 @@
 import pytest
 import pytest_check as check
 
-def read_expected(test_name, grid="8.8.8.8", mpi="1.1.1.1"):
+def read_expected_values(test_name, grid="8.8.8.8", mpi="1.1.1.1"):
     """
     Read expected values from file.
 
     The file contains one or more entries of the following format:
-    <grid> <mpi> <plaquette> <checksum_rng> <checksum_lat>
+    <line_number> <grid> <mpi> <plaquette> <checksum_rng> <checksum_lat>
     Eg.
-    8.8.8.8 1.1.1.1 0.0256253844 922c392f d1e4cc1c
+    1 8.8.8.8 1.1.1.1 0.0256253844 922c392f d1e4cc1c
+
+    This function will return the values only for the correct grid
+    and mpi arguments.
     """
 
     with open(f"{test_name}_expected.txt") as file:
         for line in file:
             line_split = line.split()
-            if line_split[0] == grid and line_split[1] == mpi:
-                return float(line_split[2]), line_split[3], line_split[4]
+            if line_split[1] == grid and line_split[2] == mpi:
+                return float(line_split[3]), line_split[4], line_split[5]
+
+    return None, None, None
+
+def read_expected_values_line(test_name, line_number=1):
+    """
+    Read expected values from file.
+
+    The file contains one or more entries of the following format:
+    <line_number> <grid> <mpi> <plaquette> <checksum_rng> <checksum_lat>
+    Eg.
+    1 8.8.8.8 1.1.1.1 0.0256253844 922c392f d1e4cc1c
+
+    This function will return the values only for the requested line_number.
+    """
+
+    with open(f"{test_name}_expected.txt") as file:
+        for line in file:
+            line_split = line.split()
+            if line_split[0] == line_number:
+                print(f"Reading reference values for grid={line_split[1]}, mpi={line_split[2]}")
+                return float(line_split[3]), line_split[4], line_split[5]
+
+    return None, None, None
 
 
 def read_output():
@@ -38,10 +64,6 @@ def read_output():
                 else:
                     print("Picked wrong line...")
 
-    if (checksum_rng is None) or (checksum_lat is None) or (plaquette is None):
-        print("Error reading values from output file. Make sure you compile the test with CPparams.saveInterval=1 in order to produce the required output.")
-        exit(1)
-        
     return plaquette, checksum_rng, checksum_lat
 
 
@@ -49,12 +71,16 @@ def test_outputs(test_name, grid, mpi, cleanup_files):
     import subprocess
     import os
 
-    expected_plaquette, expected_checksum_rng, expected_checksum_lat = read_expected(test_name, grid, mpi)
+    expected_plaquette, expected_checksum_rng, expected_checksum_lat = read_expected_values(test_name, grid, mpi)
+    if (expected_plaquette is None) or (expected_checksum_rng is None) or (expected_checksum_lat is None):
+        pytest.fail(f"No appropriate reference values found, check {test_name}_expected.txt")
 
     #result = subprocess.run([f"./{test_name} --grid {grid} --mpi {mpi} --Thermalizations 0 --Trajectories 1 --threads 1 > output.txt"], shell=True, encoding="text")
-    result = subprocess.run([f"./{test_name} --grid {grid} --mpi {mpi} --Thermalizations 0 --Trajectories 1 > output.txt"], shell=True, encoding="text")
+    #result = subprocess.run([f"./{test_name} --grid {grid} --mpi {mpi} --Thermalizations 0 --Trajectories 1 > output.txt"], shell=True, encoding="text")
     plaquette, checksum_rng, checksum_lat = read_output()
-
+    if (checksum_rng is None) or (checksum_lat is None) or (plaquette is None):
+        pytest.fail("Error reading values from output file. Make sure you compile the test with CPparams.saveInterval=1 in order to produce the required output.")
+        
     print(f"Running {test_name}")
     # This manual check of each condition doesn't have to happen for pytest-check
     # version 1.2.0 and later. We can use any_failures() instead.

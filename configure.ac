@@ -860,6 +860,7 @@ AC_CONFIG_FILES(tests/testu01/Makefile)
 AC_CONFIG_FILES(tests/sp2n/Makefile)
 AC_CONFIG_FILES(benchmarks/Makefile)
 AC_CONFIG_FILES(examples/Makefile)
+AC_CONFIG_LINKS([tests/run_regression_test.py:tests/run_regression_test.py tests/conftest.py:tests/conftest.py tests/sp2n/Test_hmc_Sp_WilsonFundFermionGauge_expected.txt:tests/sp2n/Test_hmc_Sp_WilsonFundFermionGauge_expected.txt])
 AC_OUTPUT
 
 echo ""

@@ -3,7 +3,7 @@
 NAMESPACE_BEGIN(Grid);
 
 #ifdef GRID_TRACING_NVTX
-#include <nvtx3/nvToolsExt.h>
+#include <nvToolsExt.h>
 class GridTracer {
 public:
   GridTracer(const char* name) {

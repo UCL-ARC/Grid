@@ -39,6 +39,7 @@ NAMESPACE_BEGIN(Grid);
 
 template<class vtype> accelerator_inline iScalar<vtype> Exponentiate(const iScalar<vtype>&r, RealD alpha ,  Integer Nexp = DEFAULT_MAT_EXP)
 {
+  // Goes through here!
   iScalar<vtype> ret;
   ret._internal = Exponentiate(r._internal, alpha, Nexp);
   return ret;
@@ -118,22 +119,22 @@ accelerator_inline iMatrix<vtype,3> Exponentiate(const iMatrix<vtype,3> &arg, Re
 
 
 // General exponential
-template<class vtype,int N, typename std::enable_if< GridTypeMapper<vtype>::TensorLevel == 0 >::type * =nullptr> 
-accelerator_inline iMatrix<vtype,N> Exponentiate(const iMatrix<vtype,N> &arg, RealD alpha  , Integer Nexp = DEFAULT_MAT_EXP )
+template<class vtype, int N, typename std::enable_if< GridTypeMapper<vtype>::TensorLevel == 0 >::type * =nullptr>
+accelerator_inline iMatrix<vtype,N> Exponentiate(const iMatrix<vtype,N> &arg, RealD alpha, Integer Nexp = DEFAULT_MAT_EXP)
 {
   // notice that it actually computes
   // exp ( input matrix )
   // the i sign is coming from outside
   // input matrix is anti-hermitian NOT hermitian
-  typedef iMatrix<vtype,N> mat;
-  mat unit(1.0);
-  mat temp(unit);
-  for(int i=Nexp; i>=1;--i){
-    temp *= alpha/RealD(i);
-    temp = unit + temp*arg;
-  }
-  return temp;
 
+  typedef iMatrix<vtype, N> mat;
+  mat unit(1.0);
+  mat ret(unit);
+  for (int i = Nexp; i >= 1; --i) {
+    ret *= alpha / RealD(i);
+    ret = unit + ret * arg;
+  }
+  return ret;
 }
 
 NAMESPACE_END(Grid);

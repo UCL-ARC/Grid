@@ -129,8 +129,8 @@ int main(int argc, char **argv) {
   */
 
   // HMC parameters are serialisable 
-  TheHMC.Parameters.MD.MDsteps = 20;
-  TheHMC.Parameters.MD.trajL   = 1.0;
+  TheHMC.Parameters.MD.MDsteps = 2;
+  TheHMC.Parameters.MD.trajL   = 0.1;
 
   TheHMC.ReadCommandLine(argc, argv); // these can be parameters from file
   TheHMC.Run();  // no smearing

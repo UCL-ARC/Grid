@@ -55,6 +55,7 @@ NAMESPACE_BEGIN(Grid);
 template<class Expression,typename std::enable_if<is_lattice_expr<Expression>::value,void>::type * = nullptr> 
 auto Cshift(const Expression &expr,int dim,int shift)  -> decltype(closure(expr)) 
 {
+  GRID_TRACE("Cshift");
   return Cshift(closure(expr),dim,shift);
 }
 NAMESPACE_END(Grid);

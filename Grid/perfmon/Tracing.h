@@ -25,11 +25,11 @@ class GridTracer {
  public:
   GridTracer(const char* name) {
     roctxRangePushA(name);
-    std::cout << "roctxRangePush "<<name<<std::endl;
+    std::cout << "roctxRangePush "<< name << std::endl;
   }
   ~GridTracer() {
     roctxRangePop();
-    std::cout << "roctxRangePop "<<std::endl;
+    std::cout << "roctxRangePop "<< std::endl;
   }
 };
 inline void tracePush(const char *name) { roctxRangePushA(name); }
@@ -49,7 +49,7 @@ class GridTracer {
   }
   ~GridTracer() {
     elapsed+=usecond();
-    std::cout << GridLogTracing << name << " took " <<elapsed<< " us" <<std::endl;
+    std::cout << GridLogTracing << name << " took " << elapsed << " us" << std::endl;
   }
 };
 inline void tracePush(const char *name) {  }

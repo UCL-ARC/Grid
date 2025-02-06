@@ -42,6 +42,7 @@ namespace PeriodicBC {
 									   int mu,
 									   const Lattice<covariant> &field)
   {
+    GRID_TRACE("PeriodicBC CovShiftForward");
     return Link*Cshift(field,mu,1);// moves towards negative mu
   }
   //Out(x) = Link^dag(x-mu)*field(x-mu)
@@ -49,6 +50,7 @@ namespace PeriodicBC {
 									    int mu,
 									    const Lattice<covariant> &field)
   {
+    GRID_TRACE("PeriodicBC CovShiftBackward");
     Lattice<covariant> tmp(field.Grid());
     tmp = adj(Link)*field;
     return Cshift(tmp,mu,-1);// moves towards positive mu
@@ -57,6 +59,7 @@ namespace PeriodicBC {
   template<class gauge> Lattice<gauge>
   CovShiftIdentityBackward(const Lattice<gauge> &Link, int mu) 
   {
+    GRID_TRACE("PeriodicBC CovShiftIdentityBackward");
     return Cshift(adj(Link), mu, -1);
   }
   //Out(x) = Link(x)
@@ -69,6 +72,7 @@ namespace PeriodicBC {
   template<class gauge> Lattice<gauge>
   ShiftStaple(const Lattice<gauge> &Link, int mu)
   {
+    GRID_TRACE("PeriodicBC ShiftStaple");
     return Cshift(Link, mu, 1);
   }
   
@@ -131,6 +135,7 @@ namespace ConjugateBC {
 									   int mu,
 									   const Lattice<covariant> &field)
   {
+    GRID_TRACE("ConjugateBC CovShiftForward");
     GridBase * grid = Link.Grid();
 
     int Lmu = grid->GlobalDimensions()[mu]-1;
@@ -150,6 +155,7 @@ namespace ConjugateBC {
 									    int mu,
 									    const Lattice<covariant> &field)
   {
+    GRID_TRACE("ConjugateBC CovShiftBackward");
     GridBase * grid = field.Grid();
 
     int Lmu = grid->GlobalDimensions()[mu]-1;
@@ -192,6 +198,7 @@ namespace ConjugateBC {
   template<class gauge> Lattice<gauge>
   ShiftStaple(const Lattice<gauge> &Link, int mu)
   {
+    GRID_TRACE("ConjugateBC ShiftStaple");
     GridBase *grid = Link.Grid();
     int Lmu = grid->GlobalDimensions()[mu] - 1;
 

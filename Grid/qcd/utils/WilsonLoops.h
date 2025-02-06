@@ -292,18 +292,18 @@ public:
   //////////////////////////////////////////////////
   // the sum over all nu-oriented staples for nu != mu on each site
   //////////////////////////////////////////////////
-  static void Staple(GaugeMat &staple, const GaugeLorentz &Umu, int mu) {
+  static void Staple(GaugeMat &staple, const GaugeLorentz &U, int mu) {
 
-    GridBase *grid = Umu.Grid();
-
-    std::vector<GaugeMat> U(Nd, grid);
+    std::vector<GaugeMat> Umu(Nd, U.grid());
     for (int d = 0; d < Nd; d++) {
-      U[d] = PeekIndex<LorentzIndex>(Umu, d);
+      Umu[d] = PeekIndex<LorentzIndex>(U, d);
     }
-    Staple(staple, U, mu);
+    Staple(staple, Umu, mu);
   }
 
-  static void Staple(GaugeMat &staple, const std::vector<GaugeMat> &U, int mu) {
+  static void Staple(GaugeMat &staple, const std::vector<GaugeMat> &Umu, int mu) {
+
+    GRID_TRACE("Staple");
     staple = Zero();
 
     for (int nu = 0; nu < Nd; nu++) {
@@ -318,13 +318,17 @@ public:
         //      |
         //    __|
         //
-     
+
+        // Cshift(adj(Link), mu, -1) -> adj followed by lots of small copy_plane (from Cshift) (CovShiftIdentityBackward)
+        // tmp = adj(Link)*field -> adj followed by binary mul; Cshift(tmp,mu,-1) -> lots of small copy_plane (from Cshift) (CovShiftBackward)
+        // Link*Cshift(field,mu,1) -> lots of small copy_plane (from Cshift) followed by binary mul (CovShiftForward)
+        // Cshift(Link, mu, 1) lots of small copy_plane (from Cshift) (ShiftStaple)
+        // Large HtoD copy followed by bindary add (staple is on the host, is this copying data to the device to do the add because the shifted GaugeLinkField is on the GPU?)
+        tracePush("ShiftStapleForward");
         staple += Gimpl::ShiftStaple(
-				     Gimpl::CovShiftForward(
-							    U[nu], nu,
-							    Gimpl::CovShiftBackward(
-										    U[mu], mu, Gimpl::CovShiftIdentityBackward(U[nu], nu))),
-				     mu);
+          Gimpl::CovShiftForward(Umu[nu], nu,
+            Gimpl::CovShiftBackward(Umu[mu], mu, Gimpl::CovShiftIdentityBackward(Umu[nu], nu))), mu);
+        tracePop("ShiftStapleForward");
 
         //  __
         // |
@@ -332,9 +336,11 @@ public:
         //
         //
 
+        tracePush("ShiftStapleBack");
         staple += Gimpl::ShiftStaple(
-				     Gimpl::CovShiftBackward(U[nu], nu,
-							     Gimpl::CovShiftBackward(U[mu], mu, U[nu])), mu);
+          Gimpl::CovShiftBackward(Umu[nu], nu,
+            Gimpl::CovShiftBackward(Umu[mu], mu, Umu[nu])), mu);
+        tracePop("ShiftStapleBack");
       }
     }
   }

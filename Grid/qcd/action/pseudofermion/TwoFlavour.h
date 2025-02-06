@@ -129,6 +129,8 @@ public:
   // 
   //////////////////////////////////////////////////////
   virtual void deriv(const GaugeField &U, GaugeField &dSdU) {
+
+    tracePush("TwoFlavour_deriv");
     FermOp.ImportGauge(U);
 
     FermionField X(FermOp.FermionGrid());
@@ -150,6 +152,7 @@ public:
     dSdU = dSdU + tmp;
 
     // not taking here the traceless antihermitian component
+   tracePop("TwoFlavour_deriv");
   };
 };
 

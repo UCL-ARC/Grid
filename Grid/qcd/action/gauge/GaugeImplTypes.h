@@ -29,7 +29,6 @@ directory
 #ifndef GRID_GAUGE_IMPL_TYPES_H
 #define GRID_GAUGE_IMPL_TYPES_H
 
-
 NAMESPACE_BEGIN(Grid);
 
 #define CPS_MD_TIME
@@ -133,20 +132,44 @@ public:
     }
 
   static inline void update_field(Field& P, Field& U, double ep){
-    //static std::chrono::duration<double> diff;
+    tracePush("GaugeImplTypes_update_field");
+    // static std::chrono::duration<double> diff;
 
     //auto start = std::chrono::high_resolution_clock::now();
     autoView(U_v,U,AcceleratorWrite);
     autoView(P_v,P,AcceleratorRead);
-    accelerator_for(ss, P.Grid()->oSites(),1,{
-      for (int mu = 0; mu < Nd; mu++) {
-          U_v[ss](mu) = Exponentiate(P_v[ss](mu), ep, Nexp) * U_v[ss](mu);
-          U_v[ss](mu) = Group::ProjectOnGeneralGroup(U_v[ss](mu));
-      }
-    });
-   //auto end = std::chrono::high_resolution_clock::now();
-   // diff += end - start;
-   // std::cout << "Time to exponentiate matrix " << diff.count() << " s\n";
+
+    // accelerator_for(ss, P.Grid()->oSites(), 1, {
+    //   for (int mu = 0; mu < Nd; mu++) {
+    //       U_v[ss](mu) = Exponentiate(P_v[ss](mu), ep, Nexp) * U_v[ss](mu);
+    //       U_v[ss](mu) = Group::ProjectOnGeneralGroup(U_v[ss](mu));
+    //   }
+    // });
+
+    // for (int mu = 0; mu < Nd; mu++) {
+    //   accelerator_for(ss, P.Grid()->oSites(), 1, {
+    //     U_v[ss](mu) = Exponentiate(P_v[ss](mu), ep, Nexp) * U_v[ss](mu);
+    //     U_v[ss](mu) = Group::ProjectOnGeneralGroup(U_v[ss](mu));
+    //   });
+    // }
+
+    for (int mu = 0; mu < Nd; mu++) {
+      tracePush("Exponentiate");
+      accelerator_for(ss, P.Grid()->oSites(), 1, {
+        U_v[ss](mu) = Exponentiate(P_v[ss](mu), ep, Nexp) * U_v[ss](mu);
+      });
+      tracePop("Exponentiate");
+      tracePush("ProjectOnSpGroup");
+      accelerator_for(ss, P.Grid()->oSites(), 1, {
+        U_v[ss](mu) = Group::ProjectOnGeneralGroup(U_v[ss](mu));
+      });
+      tracePop("ProjectOnSpGroup");
+    }
+
+    // auto end = std::chrono::high_resolution_clock::now();
+    //  diff += end - start;
+    //  std::cout << "Time to exponentiate matrix " << diff.count() << " s\n";
+    tracePop("GaugeImplTypes_update_field");
   }
     
   static inline RealD FieldSquareNorm(Field& U){

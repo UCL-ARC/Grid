@@ -85,8 +85,8 @@ public:
       WilsonLoops<Gimpl>::Staple(dSdU_mu, Umu, mu);
       tracePush("TA_v");
       dSdU_mu = Ta(Umu[mu] * dSdU_mu) * factor;
-      tracePop("TA_v");
       // dSdU_mu = Ta(Umu[mu] * dSdU_mu_v) * factor;
+      tracePop("TA_v");
 
       PokeIndex<LorentzIndex>(dSdU, dSdU_mu, mu);
     }

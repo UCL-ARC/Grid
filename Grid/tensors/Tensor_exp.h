@@ -126,7 +126,6 @@ accelerator_inline iMatrix<vtype,N> Exponentiate(const iMatrix<vtype,N> &arg, Re
   // exp ( input matrix )
   // the i sign is coming from outside
   // input matrix is anti-hermitian NOT hermitian
-
   typedef iMatrix<vtype, N> mat;
   mat unit(1.0);
   mat ret(unit);

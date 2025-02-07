@@ -37,6 +37,7 @@ inline std::pair<int,int> *MapCshiftTable(void)
   // GPU version
 #ifdef ACCELERATOR_CSHIFT
   uint64_t sz=Cshift_table.size();
+  std::cout << "Cshift_table.size = " << sz << "\n";
   if (Cshift_table_device.size()!=sz )    {
     Cshift_table_device.resize(sz);
   }
@@ -365,7 +366,7 @@ template<class vobj> void Copy_plane(Lattice<vobj>& lhs,const Lattice<vobj> &rhs
     auto table = MapCshiftTable();
     tracePop("MapCshiftTable");
 #ifdef ACCELERATOR_CSHIFT
-    GRID_TRACE("Copy_plane acc cshift autoView");
+    tracePush("Copy_plane acc cshift autoView");
     autoView(rhs_v , rhs, AcceleratorRead);
     autoView(lhs_v , lhs, AcceleratorWrite);
     tracePush("copy_plane acc_for");
@@ -373,6 +374,7 @@ template<class vobj> void Copy_plane(Lattice<vobj>& lhs,const Lattice<vobj> &rhs
       coalescedWrite(lhs_v[table[i].first],coalescedRead(rhs_v[table[i].second]));
     });
     tracePop("copy_plane acc_for");
+    tracePop("Copy_plane acc cshift autoView");
 #else
     autoView(rhs_v , rhs, CpuRead);
     autoView(lhs_v , lhs, CpuWrite);

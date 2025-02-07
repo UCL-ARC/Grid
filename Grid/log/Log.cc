@@ -72,6 +72,7 @@ GridLogger GridLogPerformance(1, "Performance", GridLogColours, "GREEN");
 GridLogger GridLogDslash     (1, "Dslash", GridLogColours, "BLUE");
 GridLogger GridLogIterative  (1, "Iterative", GridLogColours, "BLUE");
 GridLogger GridLogIntegrator (1, "Integrator", GridLogColours, "BLUE");
+GridLogger GridLogEd     (1, "Ed"    , GridLogColours, "GREEN");
 GridLogger GridLogHMC (1, "HMC", GridLogColours, "BLUE");
 
 void GridLogConfigure(std::vector<std::string> &logstreams) {
@@ -87,6 +88,7 @@ void GridLogConfigure(std::vector<std::string> &logstreams) {
   GridLogIntegrator.Active(1);
   GridLogColours.Active(0);
   GridLogHMC.Active(1);
+  GridLogEd.Active(1);
 
   for (int i = 0; i < logstreams.size(); i++) {
     if (logstreams[i] == std::string("Tracing"))     GridLogTracing.Active(1);

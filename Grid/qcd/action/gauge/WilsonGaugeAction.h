@@ -77,7 +77,7 @@ public:
       
       // Staple in direction mu
       WilsonLoops<Gimpl>::Staple(dSdU_mu, U, mu);
-      dSdU_mu = Ta(Umu * dSdU_mu) * factor;
+      dSdU_mu_v = Ta(Umu * dSdU_mu_v) * factor;
       
       PokeIndex<LorentzIndex>(dSdU, dSdU_mu, mu);
     }

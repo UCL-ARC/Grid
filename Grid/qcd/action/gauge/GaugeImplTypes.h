@@ -138,6 +138,7 @@ public:
     //auto start = std::chrono::high_resolution_clock::now();
     autoView(U_v,U,AcceleratorWrite);
     autoView(P_v,P,AcceleratorRead);
+    U_v = 2.0 * U_v;
     accelerator_for(ss, P.Grid()->oSites(),1,{
       for (int mu = 0; mu < Nd; mu++) {
           U_v[ss](mu) = Exponentiate(P_v[ss](mu), ep, Nexp) * U_v[ss](mu);

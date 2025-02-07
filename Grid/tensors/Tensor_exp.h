@@ -132,6 +132,16 @@ accelerator_inline iMatrix<vtype,N> Exponentiate(const iMatrix<vtype,N> &arg, Re
     temp *= alpha/RealD(i);
     temp = unit + temp*arg;
   }
+
+
+  typedef iMatrix<vtype,N> mat;
+  mat unit(1.0); // 4x4 unit matrix (I or full 1?)
+  mat temp(unit); // initialise to unit.
+  for(int i=18; i>=1;--i){ // hard coded to 18.
+    temp *= alpha/RealD(i); //
+    temp = unit + temp*arg;
+  }
+
   return temp;
 
 }

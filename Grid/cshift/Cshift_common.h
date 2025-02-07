@@ -366,15 +366,15 @@ template<class vobj> void Copy_plane(Lattice<vobj>& lhs,const Lattice<vobj> &rhs
     auto table = MapCshiftTable();
     tracePop("MapCshiftTable");
 #ifdef ACCELERATOR_CSHIFT
-    tracePush("Copy_plane acc cshift autoView");
+    tracePush("copy_plane-av");
     autoView(rhs_v , rhs, AcceleratorRead);
     autoView(lhs_v , lhs, AcceleratorWrite);
-    tracePush("copy_plane acc_for");
+    tracePush("copy_plane-acc_for");
     accelerator_for(i,ent,vobj::Nsimd(),{
       coalescedWrite(lhs_v[table[i].first],coalescedRead(rhs_v[table[i].second]));
     });
-    tracePop("copy_plane acc_for");
-    tracePop("Copy_plane acc cshift autoView");
+    tracePop("copy_plane-acc_for");
+    tracePop("copy_plane-av");
 #else
     autoView(rhs_v , rhs, CpuRead);
     autoView(lhs_v , lhs, CpuWrite);

@@ -78,14 +78,19 @@ public:
     for (int mu = 0; mu < Nd; mu++) {
       Umu[mu] = PeekIndex<LorentzIndex>(U, mu);
     }
+    // Is Umu now on the GPU after the PeekIndex?
 
     for (int mu = 0; mu < Nd; mu++) {
       // Staple in direction mu
       WilsonLoops<Gimpl>::Staple(dSdU_mu, Umu, mu);
+      tracePush("TA_v");
       dSdU_mu = Ta(Umu[mu] * dSdU_mu) * factor;
+      tracePop("TA_v");
+      // dSdU_mu = Ta(Umu[mu] * dSdU_mu_v) * factor;
 
       PokeIndex<LorentzIndex>(dSdU, dSdU_mu, mu);
     }
+    // Best place to do the copy
     tracePop("WilsonGaugeAction_deriv");
   }
 

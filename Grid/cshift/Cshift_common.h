@@ -35,7 +35,7 @@ extern commVector<std::pair<int,int> > Cshift_table_device;
 inline std::pair<int,int> *MapCshiftTable(void)
 {
   // GPU version
-#ifdef ACCELERATOR_CSHIFT    
+#ifdef ACCELERATOR_CSHIFT
   uint64_t sz=Cshift_table.size();
   if (Cshift_table_device.size()!=sz )    {
     Cshift_table_device.resize(sz);
@@ -45,7 +45,7 @@ inline std::pair<int,int> *MapCshiftTable(void)
 			  sizeof(Cshift_table[0])*sz);
 
   return &Cshift_table_device[0];
-#else 
+#else
   return &Cshift_table[0];
 #endif
   // CPU version use identify map
@@ -361,7 +361,9 @@ template<class vobj> void Copy_plane(Lattice<vobj>& lhs,const Lattice<vobj> &rhs
   }
 
   {
+    tracePush("MapCshiftTable");
     auto table = MapCshiftTable();
+    tracePop("MapCshiftTable");
 #ifdef ACCELERATOR_CSHIFT
     GRID_TRACE("Copy_plane acc cshift autoView");
     autoView(rhs_v , rhs, AcceleratorRead);

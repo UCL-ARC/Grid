@@ -1,3 +1,37 @@
+"""
+Steering script to run end-to-end regression tests.
+
+This script:
+1. Reads the parameters to run the test with and the expected values 
+   of certain outputs to compare against, from a file.
+2. Runs the requested test with the parameters read. 
+   The executable must exist in the local directory, it is not recompiled.
+3. Picks the output values from the output of the test.
+4. Compares output values with expected.
+5. Deletes the output files only if the test was successful.
+
+Dependencies: pytest, pytest-check
+
+The script should be run from the desired build/tests/<test_dir>,
+which should contain
+1. the test executable <test_name> and
+2. a file containing combinations of test parameters and the output values 
+   they are expected to produce, named <test_name>_expected.txt
+When adding new tests, please add the new <test_name>_expected.txt file
+to the repo and ammend configure.ac to link it to the build location
+with AC_CONFIG_LINKS.
+
+To run and produce nice reporting:
+pytest ../run_regression_test.py -rP --test_name=<test_name> --expected_line=<line_number>
+where 
+<test_name> is the name of the test executable
+<line_number> is the number of the line in the <test_name>_expected.txt file to read the
+test parameters and expected output values from
+
+For example, from build/tests/sp2n:
+pytest ../run_regression_test.py -rP --test_name=Test_hmc_Sp_WilsonFundFermionGauge --expected_line=2
+"""
+
 import pytest
 import pytest_check as check
 
@@ -18,7 +52,7 @@ def read_expected_values_line(test_name, line_number=1):
     with open(f"{test_name}_expected.txt") as file:
         for line in file:
             line_split = line.split()
-            if line_split[0] == line_number:
+            if line_split and line_split[0] == line_number:
                 test_parameters['grid'] = line_split[1]
                 test_parameters['mpi'] = line_split[2]
                 test_parameters['nthreads'] = line_split[3]
@@ -52,13 +86,13 @@ def read_output(test_parameters):
                     CPUvsGPU = 'GPU'
                     checked_CPUvsGPU = True
             if "Number of MD steps" in line:
-                MDsteps = line.split(' : ')[4].strip()
-                if MDsteps != test_parameters['MDsteps']:
-                    pytest.fail(f"Test was run with MDsteps={MDsteps} instead of {test_parameters['MDsteps']}")
+                MDsteps = int(line.split(' : ')[4].strip())
+                if MDsteps != int(test_parameters['MDsteps']):
+                    pytest.fail(f"Test was run with MDsteps={MDsteps} instead of {test_parameters['MDsteps']}. You need to modify the test source code and recompile.")
             elif "Trajectory length" in line:
-                trajL = line.split(' : ')[4].strip()
-                if trajL != test_parameters['trajL']:
-                    pytest.fail(f"Test was run with trajL={trajL} instead of {test_parameters['trajL']}")
+                trajL = float(line.split(' : ')[4].strip())
+                if trajL != float(test_parameters['trajL']):
+                    pytest.fail(f"Test was run with trajL={trajL} instead of {test_parameters['trajL']}. You need to modify the test source code and recompile.")
         # Read the values to test
             elif "Written NERSC" in line:
                 subline = line.split('checksum ')[1]

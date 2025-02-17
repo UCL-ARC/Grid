@@ -82,13 +82,20 @@ public:
 
     for (int mu = 0; mu < Nd; mu++) {
       // Staple in direction mu
+      tracePush("Staple");
       WilsonLoops<Gimpl>::Staple(dSdU_mu, Umu, mu);
+      // WilsonLoops<Gimpl>::Staple(dSdU_mu_v, Umu, mu);
+      tracePop("Staple");
+
       tracePush("TA_v");
       dSdU_mu = Ta(Umu[mu] * dSdU_mu) * factor;
       // dSdU_mu = Ta(Umu[mu] * dSdU_mu_v) * factor;
       tracePop("TA_v");
 
+      // Think: need to use accelerator_for with pokeIndex instead of PokeIndex.
+      tracePush("Poke_dSdU");
       PokeIndex<LorentzIndex>(dSdU, dSdU_mu, mu);
+      tracePop("Poke_dSdU");
     }
     // Best place to do the copy
     tracePop("WilsonGaugeAction_deriv");

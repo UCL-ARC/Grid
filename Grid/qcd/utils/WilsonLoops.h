@@ -303,7 +303,6 @@ public:
 
   static void Staple(GaugeMat &staple, const std::vector<GaugeMat> &Umu, int mu) {
 
-    GRID_TRACE("Staple");
     staple = Zero();
 
     for (int nu = 0; nu < Nd; nu++) {

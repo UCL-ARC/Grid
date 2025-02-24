@@ -25,6 +25,7 @@ directory
 *************************************************************************************/
 /*  END LEGAL */
 #include <Grid/Grid.h>
+
 #if Nc == 3
 #include <Grid/qcd/smearing/GaugeConfigurationMasked.h>
 #include <Grid/qcd/smearing/JacobianAction.h>
@@ -228,6 +229,4 @@ int main(int argc, char **argv)
   Grid_finalize();
 #endif
 } // main
-
-
 

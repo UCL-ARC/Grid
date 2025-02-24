@@ -122,9 +122,9 @@ def test_outputs(test_name, expected_line, cleanup_files):
 
     print(f"Running {test_name} for test parameters: ", test_parameters)
     if test_parameters['nthreads'] == '0':
-        result = subprocess.run([f"./{test_name} --grid {test_parameters['grid']} --mpi {test_parameters['mpi']} --Thermalizations 0 --Trajectories 1 > output.txt"], shell=True, encoding="text")
-    else:
-        result = subprocess.run([f"./{test_name} --grid {test_parameters['grid']} --mpi {test_parameters['mpi']} --Thermalizations 0 --Trajectories 1 --threads {test_parameters['nthreads']} > output.txt"], shell=True, encoding="text")
+        print("Running with 1 thread: --threads 1")
+        test_parameters['nthreads'] = '1'
+    result = subprocess.run([f"./{test_name} --grid {test_parameters['grid']} --mpi {test_parameters['mpi']} --Thermalizations 0 --Trajectories 1 --threads {test_parameters['nthreads']} > output.txt"], shell=True, encoding="text")
     plaquette, checksum_rng, checksum_lat = read_output(test_parameters)
     if (checksum_rng is None) or (checksum_lat is None) or (plaquette is None):
         pytest.fail("Error reading values from output file. Make sure you compile the test with CPparams.saveInterval=1 in order to produce the required output.")

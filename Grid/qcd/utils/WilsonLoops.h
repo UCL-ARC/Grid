@@ -302,7 +302,6 @@ public:
   }
 
   static void Staple(GaugeMat &staple, const std::vector<GaugeMat> &Umu, int mu) {
-
     staple = Zero();
 
     for (int nu = 0; nu < Nd; nu++) {

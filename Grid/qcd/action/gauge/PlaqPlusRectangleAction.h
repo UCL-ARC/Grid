@@ -40,6 +40,11 @@ public:
 
   INHERIT_GIMPL_TYPES(Gimpl);
 
+  using Action<GaugeField>::S;
+  using Action<GaugeField>::Sinitial;
+  using Action<GaugeField>::deriv;
+  using Action<GaugeField>::refresh;
+
 private:
   RealD c_plaq;
   RealD c_rect;
@@ -72,26 +77,25 @@ public:
   };
 
   virtual void deriv(const GaugeField &U, GaugeField &dSdU) {
-    // extend Ta to include Lorentz indexes
-    RealD factor_p = c_plaq / RealD(Nc) * 0.5;
-    RealD factor_r = c_rect / RealD(Nc) * 0.5;
+    //extend Ta to include Lorentz indexes
+    RealD factor_p = c_plaq/RealD(Nc)*0.5;
+    RealD factor_r = c_rect/RealD(Nc)*0.5;
 
     GridBase *grid = U.Grid();
 
-    std::vector<GaugeLinkField> Umu(Nd, grid);
-    for (int mu = 0; mu < Nd; mu++) {
-      Umu[mu] = PeekIndex<LorentzIndex>(U, mu);
+    std::vector<GaugeLinkField> Umu (Nd,grid);
+    for(int mu=0;mu<Nd;mu++){
+      Umu[mu] = PeekIndex<LorentzIndex>(U,mu);
     }
-    std::vector<GaugeLinkField> RectStaple(Nd, grid), Staple(Nd, grid);
-    WilsonLoops<Gimpl>::StapleAndRectStapleAll(Staple, RectStaple, Umu,
-                                               workspace);
+    std::vector<GaugeLinkField> RectStaple(Nd,grid), Staple(Nd,grid);
+    WilsonLoops<Gimpl>::StapleAndRectStapleAll(Staple, RectStaple, Umu, workspace);
 
     GaugeLinkField dSdU_mu(grid);
     GaugeLinkField staple(grid);
 
-    for (int mu = 0; mu < Nd; mu++) {
-      dSdU_mu = Ta(Umu[mu] * Staple[mu]) * factor_p;
-      dSdU_mu = dSdU_mu + Ta(Umu[mu] * RectStaple[mu]) * factor_r;
+    for (int mu=0; mu < Nd; mu++){
+      dSdU_mu = Ta(Umu[mu]*Staple[mu])*factor_p;
+      dSdU_mu = dSdU_mu + Ta(Umu[mu]*RectStaple[mu])*factor_r;
 
       PokeIndex<LorentzIndex>(dSdU, dSdU_mu, mu);
     }

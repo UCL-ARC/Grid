@@ -31,10 +31,12 @@ NAMESPACE_BEGIN(Grid);
 
 extern std::vector<std::pair<int,int> > Cshift_table; 
 extern deviceVector<std::pair<int,int> > Cshift_table_device; 
+extern std::vector<int> Cshift_vector;
+extern deviceVector<int> Cshift_vector_device; 
 
 inline std::pair<int,int> *MapCshiftTable(void)
 {
-  // GPU version
+  // GPU version only
   uint64_t sz=Cshift_table.size();
   std::cout << "Cshift_table.size = " << sz << "\n";
   if (Cshift_table_device.size()!=sz )    {
@@ -45,8 +47,25 @@ inline std::pair<int,int> *MapCshiftTable(void)
 			  sizeof(Cshift_table[0])*sz);
 
   return &Cshift_table_device[0];
-  // CPU version use identify map
 }
+
+template<class vobj> 
+inline vobj *MapCshift(std::vector<vobj> &Cshift_obj, deviceVector<vobj> &Cshift_obj_device)
+//inline vobj *MapCshift(void)
+{
+  // GPU version only
+  uint64_t sz=Cshift_obj.size();
+  std::cout << "Cshift_obj.size = " << sz << "\n";
+  if (Cshift_obj_device.size()!=sz )    {
+    Cshift_obj_device.resize(sz);
+  }
+  acceleratorCopyToDevice((void *)&Cshift_obj[0],
+			  (void *)&Cshift_obj_device[0],
+			  sizeof(Cshift_obj[0])*sz);
+
+  return &Cshift_obj_device[0];
+}
+
 ///////////////////////////////////////////////////////////////////
 // Gather for when there is no need to SIMD split 
 ///////////////////////////////////////////////////////////////////
@@ -266,52 +285,57 @@ template<class vobj> void Copy_plane(Lattice<vobj>& lhs,const Lattice<vobj> &rhs
 {
 
   GRID_TRACE("Copy_plane");
-  int rd = rhs.Grid()->_rdimensions[dimension];
+  // int rd = rhs.Grid()->_rdimensions[dimension];
 
-  if ( !rhs.Grid()->CheckerBoarded(dimension) ) {
-    cbmask=0x3;
-  }
+  // if ( !rhs.Grid()->CheckerBoarded(dimension) ) {
+  //   cbmask=0x3;
+  // }
 
   int ro  = rplane*rhs.Grid()->_ostride[dimension]; // base offset for start of plane 
   int lo  = lplane*lhs.Grid()->_ostride[dimension]; // base offset for start of plane 
 
-  int e1=rhs.Grid()->_slice_nblock[dimension]; // clearly loop invariant for icpc
-  int e2=rhs.Grid()->_slice_block[dimension];
-  int stride = rhs.Grid()->_slice_stride[dimension];
+  // int e1=rhs.Grid()->_slice_nblock[dimension]; // clearly loop invariant for icpc
+  // int e2=rhs.Grid()->_slice_block[dimension];
+  // int stride = rhs.Grid()->_slice_stride[dimension];
 
-  if(Cshift_table.size()<e1*e2) Cshift_table.resize(e1*e2); // Let it grow to biggest
+  // if(Cshift_table.size()<e1*e2) Cshift_table.resize(e1*e2); // Let it grow to biggest
 
-  int ent=0;
+  // int ent=0;
 
-  if(cbmask == 0x3 ){
-    for(int n=0;n<e1;n++){
-      for(int b=0;b<e2;b++){
-        int o =n*stride+b;
-	Cshift_table[ent++] = std::pair<int,int>(lo+o,ro+o);
-      }
-    }
-  } else { 
-    for(int n=0;n<e1;n++){
-      for(int b=0;b<e2;b++){
-        int o =n*stride+b;
-        int ocb=1<<lhs.Grid()->CheckerBoardFromOindex(o);
-        if ( ocb&cbmask ) {
-	  Cshift_table[ent++] = std::pair<int,int>(lo+o,ro+o);
-	}
-      }
-    }
-  }
+  // if(cbmask == 0x3 ){
+  //   for(int n=0;n<e1;n++){
+  //     for(int b=0;b<e2;b++){
+  //       int o =n*stride+b;
+	// Cshift_table[ent++] = std::pair<int,int>(lo+o,ro+o);
+  //     }
+  //   }
+  // } else { 
+  //   for(int n=0;n<e1;n++){
+  //     for(int b=0;b<e2;b++){
+  //       int o =n*stride+b;
+  //       int ocb=1<<lhs.Grid()->CheckerBoardFromOindex(o);
+  //       if ( ocb&cbmask ) {
+	//   Cshift_table[ent++] = std::pair<int,int>(lo+o,ro+o);
+	// }
+  //     }
+  //   }
+  // }
 
   {
     tracePush("MapCshiftTable");
-    auto table = MapCshiftTable();
+//    auto table = MapCshiftTable();
+    auto table = MapCshift<int>(Cshift_vector, Cshift_vector_device);
+//    auto table = &Cshift_vector_device[0];
+
     tracePop("MapCshiftTable");
     tracePush("copy_plane-av");
     autoView(rhs_v , rhs, AcceleratorRead);
     autoView(lhs_v , lhs, AcceleratorWrite);
     tracePush("copy_plane-acc_for");
-    accelerator_for(i,ent,vobj::Nsimd(),{
-      coalescedWrite(lhs_v[table[i].first],coalescedRead(rhs_v[table[i].second]));
+    accelerator_for(i,Cshift_vector.size(),vobj::Nsimd(),{
+//      coalescedWrite(lhs_v[table[i].first],coalescedRead(rhs_v[table[i].second]));
+    // Check that indices are properly calculated here 
+       coalescedWrite(lhs_v[table[i]+lo],coalescedRead(rhs_v[table[i]+ro]));
     });
     tracePop("copy_plane-acc_for");
     tracePop("copy_plane-av");
@@ -392,21 +416,15 @@ template<class vobj> void Cshift_local(Lattice<vobj> &ret,const Lattice<vobj> &r
   // Map to always positive shift modulo global full dimension.
   shift = (shift+fd)%fd;
 
+  int cb= (cbmask==0x2)? Odd : Even;
+  int sshift = grid->CheckerBoardShiftForCB(rhs.Checkerboard(),dimension,shift,cb);
+
   // the permute type
   ret.Checkerboard() = grid->CheckerBoardDestination(rhs.Checkerboard(),shift,dimension);
   int permute_dim =grid->PermuteDim(dimension);
   int permute_type=grid->PermuteType(dimension);
   int permute_type_dist;
 
-  for(int x=0;x<rd;x++){       
-
-    //    int o   = 0;
-    int bo  = x * grid->_ostride[dimension];
-    int cb= (cbmask==0x2)? Odd : Even;
-
-    int sshift = grid->CheckerBoardShiftForCB(rhs.Checkerboard(),dimension,shift,cb);
-    int sx     = (x+sshift)%rd;
-    
     // wrap is whether sshift > rd.
     //  num is sshift mod rd.
     // 
@@ -424,19 +442,66 @@ template<class vobj> void Cshift_local(Lattice<vobj> &ret,const Lattice<vobj> &r
     //  XX YY ; 3
     //  XX YY ; 0
     //
+    int wrap = sshift/rd; wrap=wrap % ly;
+    int  num = sshift%rd;
+
+  // Calculate Cshift_vector - it's the same for all slices
+  if ( !grid->CheckerBoarded(dimension) ) {
+    cbmask=0x3;
+  }
+  
+  int e1=grid->_slice_nblock[dimension]; // clearly loop invariant for icpc
+  int e2=grid->_slice_block[dimension];
+  int stride = grid->_slice_stride[dimension];
+
+  if (Cshift_vector.size() < e1*e2) Cshift_table.resize(e1*e2); // Let it grow to biggest 
+
+  int ent = 0;
+  if(cbmask == 0x3 ){
+    for(int n=0;n<e1;n++){
+      for(int b=0;b<e2;b++){
+        int o =n*stride+b;
+        Cshift_vector[ent++] = o;
+      }
+    }
+  } else { 
+    for(int n=0;n<e1;n++){
+      for(int b=0;b<e2;b++){
+        int o =n*stride+b;
+        int ocb=1<<ret.Grid()->CheckerBoardFromOindex(o);
+        if ( ocb&cbmask ) {
+          Cshift_vector[ent++] = o;
+        }
+      }
+    }
+  }
+  
+  if (ent < Cshift_vector.size()) Cshift_table.resize(ent); // trim vector to actual size (relevant for checkerboarded dimensions)
+
+  // Copy it to the device
+  // uint64_t sz=Cshift_vector.size();
+  // std::cout << "Cshift_vector.size = " << sz << "\n";
+  // if (Cshift_vector_device.size()!=sz )    {
+  //   Cshift_vector_device.resize(sz);
+  // }
+  // acceleratorCopyToDevice((void *)&Cshift_vector[0],
+	// 		  (void *)&Cshift_vector_device[0],
+	// 		  sizeof(Cshift_vector[0])*sz); 
+
+  for(int x=0;x<rd;x++){       
+
+    int sx     = (x+sshift)%rd;
+    
     int permute_slice=0;
     if(permute_dim){
-      int wrap = sshift/rd; wrap=wrap % ly;
-      int  num = sshift%rd;
-
       if ( x< rd-num ) permute_slice=wrap;
       else permute_slice = (wrap+1)%ly;
 
       if ( (ly>2) && (permute_slice) ) {
-	assert(permute_type & RotateBit);
-	permute_type_dist = permute_type|permute_slice;
+      	assert(permute_type & RotateBit);
+	      permute_type_dist = permute_type|permute_slice;
       } else {
-	permute_type_dist = permute_type;
+	      permute_type_dist = permute_type;
       }
     }
 

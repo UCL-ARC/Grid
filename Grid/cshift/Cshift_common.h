@@ -34,28 +34,12 @@ extern deviceVector<std::pair<int,int> > Cshift_table_device;
 extern std::vector<int> Cshift_vector;
 extern deviceVector<int> Cshift_vector_device; 
 
-inline std::pair<int,int> *MapCshiftTable(void)
-{
-  // GPU version only
-  uint64_t sz=Cshift_table.size();
-  std::cout << "Cshift_table.size = " << sz << "\n";
-  if (Cshift_table_device.size()!=sz )    {
-    Cshift_table_device.resize(sz);
-  }
-  acceleratorCopyToDevice((void *)&Cshift_table[0],
-			  (void *)&Cshift_table_device[0],
-			  sizeof(Cshift_table[0])*sz);
-
-  return &Cshift_table_device[0];
-}
-
 template<class vobj> 
 inline vobj *MapCshift(std::vector<vobj> &Cshift_obj, deviceVector<vobj> &Cshift_obj_device)
-//inline vobj *MapCshift(void)
 {
   // GPU version only
   uint64_t sz=Cshift_obj.size();
-  std::cout << "Cshift_obj.size = " << sz << "\n";
+  //std::cout << "Cshift_obj.size = " << sz << "\n";
   if (Cshift_obj_device.size()!=sz )    {
     Cshift_obj_device.resize(sz);
   }
@@ -109,7 +93,7 @@ Gather_plane_simple (const Lattice<vobj> &rhs,deviceVector<vobj> &buffer,int dim
   }
   {
     auto buffer_p = & buffer[0];
-    auto table = MapCshiftTable();
+    auto table = MapCshift<std::pair<int,int> >(Cshift_table, Cshift_table_device);
     autoView(rhs_v , rhs, AcceleratorRead);
     accelerator_for(i,ent,vobj::Nsimd(),{
 	coalescedWrite(buffer_p[table[i].first],coalescedRead(rhs_v[table[i].second]));
@@ -221,7 +205,7 @@ template<class vobj> void Scatter_plane_simple (Lattice<vobj> &rhs,deviceVector<
   
   {
     auto buffer_p = & buffer[0];
-    auto table = MapCshiftTable();
+    auto table = MapCshift<std::pair<int,int> >(Cshift_table, Cshift_table_device);
     autoView( rhs_v, rhs, AcceleratorWrite);
     accelerator_for(i,ent,vobj::Nsimd(),{
 	coalescedWrite(rhs_v[table[i].first],coalescedRead(buffer_p[table[i].second]));
@@ -285,105 +269,37 @@ template<class vobj> void Copy_plane(Lattice<vobj>& lhs,const Lattice<vobj> &rhs
 {
 
   GRID_TRACE("Copy_plane");
-  // int rd = rhs.Grid()->_rdimensions[dimension];
-
-  // if ( !rhs.Grid()->CheckerBoarded(dimension) ) {
-  //   cbmask=0x3;
-  // }
 
   int ro  = rplane*rhs.Grid()->_ostride[dimension]; // base offset for start of plane 
   int lo  = lplane*lhs.Grid()->_ostride[dimension]; // base offset for start of plane 
 
-  // int e1=rhs.Grid()->_slice_nblock[dimension]; // clearly loop invariant for icpc
-  // int e2=rhs.Grid()->_slice_block[dimension];
-  // int stride = rhs.Grid()->_slice_stride[dimension];
+  tracePush("MapCshiftTable");
+  auto table = &Cshift_vector_device[0];
 
-  // if(Cshift_table.size()<e1*e2) Cshift_table.resize(e1*e2); // Let it grow to biggest
-
-  // int ent=0;
-
-  // if(cbmask == 0x3 ){
-  //   for(int n=0;n<e1;n++){
-  //     for(int b=0;b<e2;b++){
-  //       int o =n*stride+b;
-	// Cshift_table[ent++] = std::pair<int,int>(lo+o,ro+o);
-  //     }
-  //   }
-  // } else { 
-  //   for(int n=0;n<e1;n++){
-  //     for(int b=0;b<e2;b++){
-  //       int o =n*stride+b;
-  //       int ocb=1<<lhs.Grid()->CheckerBoardFromOindex(o);
-  //       if ( ocb&cbmask ) {
-	//   Cshift_table[ent++] = std::pair<int,int>(lo+o,ro+o);
-	// }
-  //     }
-  //   }
-  // }
-
-  {
-    tracePush("MapCshiftTable");
-//    auto table = MapCshiftTable();
-    auto table = MapCshift<int>(Cshift_vector, Cshift_vector_device);
-//    auto table = &Cshift_vector_device[0];
-
-    tracePop("MapCshiftTable");
-    tracePush("copy_plane-av");
-    autoView(rhs_v , rhs, AcceleratorRead);
-    autoView(lhs_v , lhs, AcceleratorWrite);
-    tracePush("copy_plane-acc_for");
-    accelerator_for(i,Cshift_vector.size(),vobj::Nsimd(),{
-//      coalescedWrite(lhs_v[table[i].first],coalescedRead(rhs_v[table[i].second]));
-    // Check that indices are properly calculated here 
-       coalescedWrite(lhs_v[table[i]+lo],coalescedRead(rhs_v[table[i]+ro]));
-    });
-    tracePop("copy_plane-acc_for");
-    tracePop("copy_plane-av");
-  }
+  tracePop("MapCshiftTable");
+  tracePush("copy_plane-av");
+  autoView(rhs_v , rhs, AcceleratorRead);
+  autoView(lhs_v , lhs, AcceleratorWrite);
+  tracePush("copy_plane-acc_for");
+  accelerator_for(i,Cshift_vector.size(),vobj::Nsimd(),{
+    coalescedWrite(lhs_v[table[i]+lo],coalescedRead(rhs_v[table[i]+ro]));
+  });
+  tracePop("copy_plane-acc_for");
+  tracePop("copy_plane-av");
 }
 
 template<class vobj> void Copy_plane_permute(Lattice<vobj>& lhs,const Lattice<vobj> &rhs, int dimension,int lplane,int rplane,int cbmask,int permute_type)
 {
-  int rd = rhs.Grid()->_rdimensions[dimension];
-
-  if ( !rhs.Grid()->CheckerBoarded(dimension) ) {
-    cbmask=0x3;
-  }
 
   int ro  = rplane*rhs.Grid()->_ostride[dimension]; // base offset for start of plane 
   int lo  = lplane*lhs.Grid()->_ostride[dimension]; // base offset for start of plane 
 
-  int e1=rhs.Grid()->_slice_nblock[dimension];
-  int e2=rhs.Grid()->_slice_block [dimension];
-  int stride = rhs.Grid()->_slice_stride[dimension];
-
-  if(Cshift_table.size()<e1*e2) Cshift_table.resize(e1*e2); // Let it grow to biggest
-
-  int ent=0;
-
-  if ( cbmask == 0x3 ) {
-    for(int n=0;n<e1;n++){
-    for(int b=0;b<e2;b++){
-      int o  =n*stride;
-      Cshift_table[ent++] = std::pair<int,int>(lo+o+b,ro+o+b);
-    }}
-  } else {
-    for(int n=0;n<e1;n++){
-    for(int b=0;b<e2;b++){
-      int o  =n*stride;
-      int ocb=1<<lhs.Grid()->CheckerBoardFromOindex(o+b);
-      if ( ocb&cbmask ) Cshift_table[ent++] = std::pair<int,int>(lo+o+b,ro+o+b);
-    }}
-  }
-
-  {
-    auto table = MapCshiftTable();
-    autoView( rhs_v, rhs, AcceleratorRead);
-    autoView( lhs_v, lhs, AcceleratorWrite);
-    accelerator_for(i,ent,1,{
-      permute(lhs_v[table[i].first],rhs_v[table[i].second],permute_type);
+  auto table = &Cshift_vector_device[0];
+  autoView( rhs_v, rhs, AcceleratorRead);
+  autoView( lhs_v, lhs, AcceleratorWrite);
+  accelerator_for(i,Cshift_vector.size(),1,{
+    permute(lhs_v[table[i]+lo],rhs_v[table[i]+ro],permute_type);
     });
-  }
 }
 
 //////////////////////////////////////////////////////
@@ -425,25 +341,25 @@ template<class vobj> void Cshift_local(Lattice<vobj> &ret,const Lattice<vobj> &r
   int permute_type=grid->PermuteType(dimension);
   int permute_type_dist;
 
-    // wrap is whether sshift > rd.
-    //  num is sshift mod rd.
-    // 
-    //  shift 7
-    //
-    //  XoXo YcYc 
-    //  oXoX cYcY
-    //  XoXo YcYc
-    //  oXoX cYcY
-    //
-    //  sshift -- 
-    //
-    //  XX YY ; 3
-    //  XX YY ; 0
-    //  XX YY ; 3
-    //  XX YY ; 0
-    //
-    int wrap = sshift/rd; wrap=wrap % ly;
-    int  num = sshift%rd;
+  // wrap is whether sshift > rd.
+  //  num is sshift mod rd.
+  // 
+  //  shift 7
+  //
+  //  XoXo YcYc 
+  //  oXoX cYcY
+  //  XoXo YcYc
+  //  oXoX cYcY
+  //
+  //  sshift -- 
+  //
+  //  XX YY ; 3
+  //  XX YY ; 0
+  //  XX YY ; 3
+  //  XX YY ; 0
+  //
+  int wrap = sshift/rd; wrap=wrap % ly;
+  int  num = sshift%rd;
 
   // Calculate Cshift_vector - it's the same for all slices
   if ( !grid->CheckerBoarded(dimension) ) {
@@ -454,7 +370,7 @@ template<class vobj> void Cshift_local(Lattice<vobj> &ret,const Lattice<vobj> &r
   int e2=grid->_slice_block[dimension];
   int stride = grid->_slice_stride[dimension];
 
-  if (Cshift_vector.size() < e1*e2) Cshift_table.resize(e1*e2); // Let it grow to biggest 
+  if (Cshift_vector.size() < e1*e2) Cshift_vector.resize(e1*e2); // Let it grow to biggest 
 
   int ent = 0;
   if(cbmask == 0x3 ){
@@ -476,17 +392,11 @@ template<class vobj> void Cshift_local(Lattice<vobj> &ret,const Lattice<vobj> &r
     }
   }
   
-  if (ent < Cshift_vector.size()) Cshift_table.resize(ent); // trim vector to actual size (relevant for checkerboarded dimensions)
+  if (ent < Cshift_vector.size()) Cshift_vector.resize(ent); // trim vector to actual size (relevant for checkerboarded dimensions)
 
   // Copy it to the device
-  // uint64_t sz=Cshift_vector.size();
-  // std::cout << "Cshift_vector.size = " << sz << "\n";
-  // if (Cshift_vector_device.size()!=sz )    {
-  //   Cshift_vector_device.resize(sz);
-  // }
-  // acceleratorCopyToDevice((void *)&Cshift_vector[0],
-	// 		  (void *)&Cshift_vector_device[0],
-	// 		  sizeof(Cshift_vector[0])*sz); 
+  // This doesn't need to return table
+  auto table = MapCshift<int>(Cshift_vector, Cshift_vector_device);
 
   for(int x=0;x<rd;x++){       
 

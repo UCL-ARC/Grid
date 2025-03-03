@@ -303,6 +303,11 @@ public:
 
   static void Staple(GaugeMat &staple, const std::vector<GaugeMat> &Umu, int mu) {
     staple = Zero();
+    // GaugeMat::NSimd()
+    // autoView(staple_v, staple, AcceleratorWrite);
+    // accelerator_for(i, staple.Grid()->oSites(), 1, {
+    //     staple_v[i] = Zero();
+    // });
 
     for (int nu = 0; nu < Nd; nu++) {
 

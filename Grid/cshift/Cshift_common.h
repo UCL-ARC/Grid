@@ -36,7 +36,6 @@ inline std::pair<int,int> *MapCshiftTable(void)
 {
   // GPU version
   uint64_t sz=Cshift_table.size();
-  std::cout << "Cshift_table.size = " << sz << "\n";
   if (Cshift_table_device.size()!=sz )    {
     Cshift_table_device.resize(sz);
   }

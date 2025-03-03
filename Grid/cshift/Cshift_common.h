@@ -34,12 +34,12 @@ extern deviceVector<std::pair<int,int> > Cshift_table_device;
 extern std::vector<int> Cshift_vector;
 extern deviceVector<int> Cshift_vector_device; 
 
+// Copy Cshift map object (table or vector) to device
 template<class vobj> 
-inline vobj *MapCshift(std::vector<vobj> &Cshift_obj, deviceVector<vobj> &Cshift_obj_device)
+inline void MapCshiftCopy(std::vector<vobj> &Cshift_obj, deviceVector<vobj> &Cshift_obj_device)
 {
   // GPU version only
   uint64_t sz=Cshift_obj.size();
-  //std::cout << "Cshift_obj.size = " << sz << "\n";
   if (Cshift_obj_device.size()!=sz )    {
     Cshift_obj_device.resize(sz);
   }
@@ -47,8 +47,56 @@ inline vobj *MapCshift(std::vector<vobj> &Cshift_obj, deviceVector<vobj> &Cshift
 			  (void *)&Cshift_obj_device[0],
 			  sizeof(Cshift_obj[0])*sz);
 
+}
+
+// Copy Cshift map object (table or vector) to device and return pointer to device copy
+template<class vobj> 
+inline vobj *MapCshift(std::vector<vobj> &Cshift_obj, deviceVector<vobj> &Cshift_obj_device)
+{
+  MapCshiftCopy<vobj>(Cshift_obj, Cshift_obj_device);
+
   return &Cshift_obj_device[0];
 }
+
+// Calculate Cshift_vector
+template<class vobj> 
+void CalculateCshiftVector(Lattice<vobj> &ret, const Lattice<vobj> &rhs, int dimension, int cbmask)
+{
+  GridBase *grid = rhs.Grid();
+
+  if ( !grid->CheckerBoarded(dimension) ) {
+    cbmask=0x3;
+  }
+  
+  int e1=grid->_slice_nblock[dimension]; // clearly loop invariant for icpc
+  int e2=grid->_slice_block[dimension];
+  int stride = grid->_slice_stride[dimension];
+
+  if (Cshift_vector.size() < e1*e2) Cshift_vector.resize(e1*e2); // Let it grow to biggest 
+
+  int ent = 0;
+  if(cbmask == 0x3 ){
+    for(int n=0;n<e1;n++){
+      for(int b=0;b<e2;b++){
+        int o =n*stride+b;
+        Cshift_vector[ent++] = o;
+      }
+    }
+  } else { 
+    for(int n=0;n<e1;n++){
+      for(int b=0;b<e2;b++){
+        int o =n*stride+b;
+        int ocb=1<<ret.Grid()->CheckerBoardFromOindex(o);
+        if ( ocb&cbmask ) {
+          Cshift_vector[ent++] = o;
+        }
+      }
+    }
+  }
+  
+  if (ent < Cshift_vector.size()) Cshift_vector.resize(ent); // trim vector to actual size (relevant for checkerboarded dimensions)
+}
+
 
 ///////////////////////////////////////////////////////////////////
 // Gather for when there is no need to SIMD split 
@@ -362,41 +410,9 @@ template<class vobj> void Cshift_local(Lattice<vobj> &ret,const Lattice<vobj> &r
   int  num = sshift%rd;
 
   // Calculate Cshift_vector - it's the same for all slices
-  if ( !grid->CheckerBoarded(dimension) ) {
-    cbmask=0x3;
-  }
-  
-  int e1=grid->_slice_nblock[dimension]; // clearly loop invariant for icpc
-  int e2=grid->_slice_block[dimension];
-  int stride = grid->_slice_stride[dimension];
-
-  if (Cshift_vector.size() < e1*e2) Cshift_vector.resize(e1*e2); // Let it grow to biggest 
-
-  int ent = 0;
-  if(cbmask == 0x3 ){
-    for(int n=0;n<e1;n++){
-      for(int b=0;b<e2;b++){
-        int o =n*stride+b;
-        Cshift_vector[ent++] = o;
-      }
-    }
-  } else { 
-    for(int n=0;n<e1;n++){
-      for(int b=0;b<e2;b++){
-        int o =n*stride+b;
-        int ocb=1<<ret.Grid()->CheckerBoardFromOindex(o);
-        if ( ocb&cbmask ) {
-          Cshift_vector[ent++] = o;
-        }
-      }
-    }
-  }
-  
-  if (ent < Cshift_vector.size()) Cshift_vector.resize(ent); // trim vector to actual size (relevant for checkerboarded dimensions)
-
+  CalculateCshiftVector<vobj>(ret, rhs, dimension, cbmask);
   // Copy it to the device
-  // This doesn't need to return table
-  auto table = MapCshift<int>(Cshift_vector, Cshift_vector_device);
+  MapCshiftCopy<int>(Cshift_vector, Cshift_vector_device);
 
   for(int x=0;x<rd;x++){       
 

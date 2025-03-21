@@ -34,6 +34,7 @@ NAMESPACE_BEGIN(Grid);
 const int Cshift_verbose=0;
 template<class vobj> Lattice<vobj> Cshift(const Lattice<vobj> &rhs,int dimension,int shift)
 {
+  GRID_TRACE("Cshift_MPI");
   typedef typename vobj::vector_type vector_type;
   typedef typename vobj::scalar_type scalar_type;
 
@@ -56,7 +57,9 @@ template<class vobj> Lattice<vobj> Cshift(const Lattice<vobj> &rhs,int dimension
   t0=usecond();
   if ( !comm_dim ) {
     //    std::cout << "CSHIFT: Cshift_local" <<std::endl;
+    tracePush("Cshift_local_MPI");
     Cshift_local(ret,rhs,dimension,shift); // Handles checkerboarding
+    tracePop("Cshift_local_MPI");
   } else if ( splice_dim ) {
     //    std::cout << "CSHIFT: Cshift_comms_simd call - splice_dim = " << splice_dim << " shift " << shift << " dimension = " << dimension << std::endl;
     Cshift_comms_simd(ret,rhs,dimension,shift);
@@ -106,6 +109,7 @@ template<class vobj> void Cshift_comms_simd(Lattice<vobj>& ret,const Lattice<vob
 }
 template<class vobj> void Cshift_comms(Lattice<vobj> &ret,const Lattice<vobj> &rhs,int dimension,int shift,int cbmask)
 {
+  GRID_TRACE("Cshift_comms_MPI");
   typedef typename vobj::vector_type vector_type;
   typedef typename vobj::scalar_type scalar_type;
 
@@ -132,6 +136,16 @@ template<class vobj> void Cshift_comms(Lattice<vobj> &ret,const Lattice<vobj> &r
   
   int cb= (cbmask==0x2)? Odd : Even;
   int sshift= rhs.Grid()->CheckerBoardShiftForCB(rhs.Checkerboard(),dimension,shift,cb);
+
+  // Calculate Cshift_vector - it's the same for all slices
+  tracePush("CalcCshiftTableMPI");
+  CalculateCshiftVector<vobj>(ret, rhs, dimension, cbmask);
+  tracePop("CalcCshiftTableMPI");
+  // Copy it to the device
+  tracePush("MapCshiftTableMPI");
+  MapCshiftCopy<int>(Cshift_vector, Cshift_vector_device);
+  tracePop("MapCshiftTableMPI");
+  
   RealD tcopy=0.0;
   RealD tgather=0.0;
   RealD tscatter=0.0;
@@ -203,6 +217,7 @@ template<class vobj> void Cshift_comms(Lattice<vobj> &ret,const Lattice<vobj> &r
 
 template<class vobj> void  Cshift_comms_simd(Lattice<vobj> &ret,const Lattice<vobj> &rhs,int dimension,int shift,int cbmask)
 {
+  GRID_TRACE("Cshift_comms_simd_MPI");
   GridBase *grid=rhs.Grid();
   const int Nsimd = grid->Nsimd();
   typedef typename vobj::vector_type vector_type;

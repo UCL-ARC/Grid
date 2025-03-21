@@ -321,10 +321,7 @@ template<class vobj> void Copy_plane(Lattice<vobj>& lhs,const Lattice<vobj> &rhs
   int ro  = rplane*rhs.Grid()->_ostride[dimension]; // base offset for start of plane 
   int lo  = lplane*lhs.Grid()->_ostride[dimension]; // base offset for start of plane 
 
-  tracePush("MapCshiftTable");
   auto table = &Cshift_vector_device[0];
-
-  tracePop("MapCshiftTable");
   tracePush("copy_plane-av");
   autoView(rhs_v , rhs, AcceleratorRead);
   autoView(lhs_v , lhs, AcceleratorWrite);
@@ -370,6 +367,7 @@ template<class vobj> void Cshift_local(Lattice<vobj>& ret,const Lattice<vobj> &r
 
 template<class vobj> void Cshift_local(Lattice<vobj> &ret,const Lattice<vobj> &rhs,int dimension,int shift,int cbmask)
 {
+  GRID_TRACE("Cshift_local");
   GridBase *grid = rhs.Grid();
   int fd = grid->_fdimensions[dimension];
   int rd = grid->_rdimensions[dimension];
@@ -410,9 +408,13 @@ template<class vobj> void Cshift_local(Lattice<vobj> &ret,const Lattice<vobj> &r
   int  num = sshift%rd;
 
   // Calculate Cshift_vector - it's the same for all slices
+  tracePush("CalcCshiftTable");
   CalculateCshiftVector<vobj>(ret, rhs, dimension, cbmask);
+  tracePop("CalcCshiftTable");
   // Copy it to the device
+  tracePush("MapCshiftTable");
   MapCshiftCopy<int>(Cshift_vector, Cshift_vector_device);
+  tracePop("MapCshiftTable");
 
   for(int x=0;x<rd;x++){       
 
